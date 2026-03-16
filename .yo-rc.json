@@ -1,0 +1,21 @@
+{
+  "@microsoft/generator-sharepoint": {
+    "plusBeta": false,
+    "isCreatingSolution": true,
+    "nodeVersion": "18.20.4",
+    "sdksVersions": {
+      "@microsoft/microsoft-graph-client": "3.0.2",
+      "@microsoft/teams-js": "2.24.0"
+    },
+    "version": "1.20.0",
+    "libraryName": "hr-ziektebeheer",
+    "libraryId": "0b837333-53c4-46c1-ba37-f28d5b350a5c",
+    "environment": "spo",
+    "packageManager": "npm",
+    "solutionName": "hr-ziektebeheer",
+    "solutionShortDescription": "hr-ziektebeheer description",
+    "skipFeatureDeployment": true,
+    "isDomainIsolated": false,
+    "componentType": "webpart"
+  }
+}

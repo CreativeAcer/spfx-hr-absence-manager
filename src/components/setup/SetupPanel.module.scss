@@ -1,0 +1,62 @@
+.statusItem {
+  padding: 12px 14px;
+  border-radius: 6px;
+  border: 1px solid #edebe9;
+  background: #faf9f8;
+  transition: border-color 0.15s ease;
+  &:hover { border-color: #c8c6c4; }
+}
+.status_bestaat   { border-left: 4px solid #107c10; background: #f1faf1; }
+.status_ontbreekt { border-left: 4px solid #ca5010; background: #fff8f5; }
+.status_bezig     { border-left: 4px solid #0078d4; background: #f0f6ff; }
+.status_klaar     { border-left: 4px solid #107c10; background: #f0fff0; }
+.status_fout      { border-left: 4px solid #a4262c; background: #fff0f0; }
+.status_onbekend  { border-left: 4px solid #605e5c; background: #faf9f8; }
+
+.statusIcoonWrapper {
+  width: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.itemLabel        { font-weight: 600; font-size: 14px; color: #323130; }
+.itemBeschrijving { font-size: 12px; color: #605e5c; }
+
+.statusBadge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.aantalBadge {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  background: #0078d420;
+  color: #0078d4;
+  border: 1px solid #0078d440;
+}
+.foutText     { font-size: 12px; color: #a4262c; font-style: italic; }
+.enkelKnop    { color: #0078d4 !important; white-space: nowrap; flex-shrink: 0; }
+
+.samenvattingKlaar { padding: 12px 16px; background: #f1faf1; border-radius: 6px; border: 1px solid #107c1040; }
+.samenvattingActie { padding: 12px 16px; background: #fff8f5; border-radius: 6px; border: 1px solid #ca501040; }
+
+.logContainer {
+  background: #1e1e1e;
+  border-radius: 6px;
+  padding: 12px 16px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+.logRegel {
+  font-size: 12px;
+  color: #d4d4d4;
+  font-family: 'Cascadia Code', Consolas, 'Courier New', monospace;
+  line-height: 1.6;
+}

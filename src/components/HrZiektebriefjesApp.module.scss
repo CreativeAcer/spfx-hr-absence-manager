@@ -1,0 +1,36 @@
+.appContainer {
+  padding: 20px;
+  max-width: 1400px;
+  font-family: 'Segoe UI', sans-serif;
+}
+.loadingContainer {
+  min-height: 300px;
+  width: 100%;
+}
+.appHeader {
+  padding-bottom: 8px;
+  border-bottom: 2px solid #0078d4;
+}
+.appTitle {
+  color: #0078d4;
+  font-weight: 700;
+  margin: 0;
+}
+.appSubtitle {
+  color: #605e5c;
+  margin: 0;
+}
+.filterBar {
+  align-items: center;
+}
+.searchBox {
+  min-width: 280px;
+  max-width: 360px;
+}
+.statusDropdown {
+  min-width: 200px;
+}
+.resultTelling {
+  color: #605e5c;
+  align-self: center;
+}

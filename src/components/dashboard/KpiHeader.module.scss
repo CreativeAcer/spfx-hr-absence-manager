@@ -1,0 +1,11 @@
+.kpiContainer { width: 100%; }
+.kpiCard { flex: 1; min-width: 160px; max-width: 240px; padding: 16px 20px; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.12); border-left: 4px solid transparent; background: white; }
+.blauw  { border-left-color: #0078d4; background: #f0f6ff; }
+.oranje { border-left-color: #ca5010; background: #fff4f0; }
+.groen  { border-left-color: #107c10; background: #f0fff0; }
+.paars  { border-left-color: #5c2d91; background: #faf0ff; }
+.grijs  { border-left-color: #605e5c; background: #faf9f8; }
+.kpiEmoji    { font-size: 20px; line-height: 1; }
+.kpiWaarde   { font-size: 28px; font-weight: 700; color: #323130; }
+.kpiLabel    { font-size: 12px; color: #605e5c; font-weight: 600; }
+.kpiSublabel { font-size: 11px; color: #a19f9d; }
