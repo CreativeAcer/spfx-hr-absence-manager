@@ -1,9 +1,6 @@
 // ============================================================
 // webparts/hRZiektebriefjes/HRZiektebriefjesWebPart.ts
 //
-// LET OP: pas de klassenaam aan zodat die overeenkomt met
-// de alias in het .manifest.json dat de generator aanmaakte.
-// De generator gebruikte waarschijnlijk HRZiektebriefjesWebPart.
 // ============================================================
 import * as React from 'react';
 import * as ReactDom from 'react-dom';
