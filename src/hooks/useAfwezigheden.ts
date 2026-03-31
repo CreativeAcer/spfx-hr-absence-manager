@@ -13,8 +13,8 @@ import {
 import { afwezighedenService } from '../services/AfwezighedenService';
 import { documentService } from '../services/DocumentService';
 import { settingsService } from '../services/SettingsService';
-import { mailService } from '../services/MailService';
-import { auditService } from '../services/AuditService';
+import { absenceController } from '../services/AbsenceController';
+import { DREMPEL_DAGEN } from '../constants';
 
 export interface IAfwezighedenState {
   afwezigheden: IAfwezigheid[];
@@ -46,8 +46,13 @@ export function useAfwezigheden(): IAfwezighedenState & IAfwezighedenActions {
   const laadData = useCallback(async (): Promise<void> => {
     setIsLoading(true);
     setFout(undefined);
-    const [afwezighedenResult, pendingResult, settingsResult] = await Promise.all([
-      afwezighedenService.getActieveAfwezigheden().then(
+
+    // Load settings first so the warning threshold is correct for absence mapping.
+    const loadedSettings = await settingsService.getSettings().catch(() => undefined);
+    const waarschuwingsDagen = loadedSettings?.waarschuwingsDagenVerval ?? DREMPEL_DAGEN.WAARSCHUWING;
+
+    const [afwezighedenResult, pendingResult] = await Promise.all([
+      afwezighedenService.getActieveAfwezigheden(waarschuwingsDagen).then(
         (v) => ({ ok: true as const, value: v }),
         (e) => ({ ok: false as const, error: e })
       ),
@@ -55,22 +60,18 @@ export function useAfwezigheden(): IAfwezighedenState & IAfwezighedenActions {
         (v) => ({ ok: true as const, value: v }),
         () => ({ ok: true as const, value: [] as IZiektebriefDocument[] })
       ),
-      settingsService.getSettings().then(
-        (v) => ({ ok: true as const, value: v }),
-        () => ({ ok: true as const, value: undefined as IHrSettings | undefined })
-      ),
     ]);
 
     if (afwezighedenResult.ok) {
       setAfwezigheden(afwezighedenResult.value);
-      setKpis(afwezighedenService.berekenKpis(afwezighedenResult.value));
+      setKpis(afwezighedenService.berekenKpis(afwezighedenResult.value, waarschuwingsDagen));
     } else {
       console.error('[useAfwezigheden] Laad fout:', afwezighedenResult.error);
       setFout('Kon de afwezigheidsgegevens niet laden. Controleer je rechten of probeer opnieuw.');
     }
 
     setPendingDocumenten(pendingResult.value);
-    setSettings(settingsResult.value);
+    setSettings(loadedSettings);
     setIsLoading(false);
   }, []);
 
@@ -81,33 +82,11 @@ export function useAfwezigheden(): IAfwezighedenState & IAfwezighedenActions {
   const verleng = useCallback(
     async (id: number, formData: IVerlengFormData): Promise<void> => {
       if (!settings) throw new Error('Settings niet geladen');
+      const item = afwezigheden.find((a) => a.id === id);
+      if (!item) throw new Error('Afwezigheid niet gevonden');
       setIsActieBezig(true);
       try {
-        const item = afwezigheden.find((a) => a.id === id);
-        if (!item) throw new Error('Afwezigheid niet gevonden');
-
-        await afwezighedenService.verlengAfwezigheid(id, formData, item);
-
-        if (item.documentID) {
-          await documentService.updateDocumentMetadata(item.documentID, 'Verlengd', formData.nieuweEinddatum);
-        }
-
-        await auditService.logActie({
-          afwezigheidId: id,
-          actie: 'Verlengd',
-          persoonNaam: item.persoon.displayName,
-          oudeWaarde: { einddatum: item.einddatum, status: item.status },
-          nieuweWaarde: { einddatum: formData.nieuweEinddatum, status: 'Verlengd' },
-          opmerking: formData.opmerking,
-        });
-
-        mailService.stuurNotificatie({
-          afwezigheid: item,
-          mailType: 'verlenging',
-          settings,
-          extra: { nieuweEinddatum: formData.nieuweEinddatum, opmerking: formData.opmerking },
-        }).catch((err) => console.warn('[Mail] Verzending mislukt (niet-blokkerend):', err));
-
+        await absenceController.verleng(id, formData, item, settings);
         await laadData();
       } finally {
         setIsActieBezig(false);
@@ -119,33 +98,11 @@ export function useAfwezigheden(): IAfwezighedenState & IAfwezighedenActions {
   const zetTeRugActief = useCallback(
     async (id: number, formData: ITeRugActiefFormData): Promise<void> => {
       if (!settings) throw new Error('Settings niet geladen');
+      const item = afwezigheden.find((a) => a.id === id);
+      if (!item) throw new Error('Afwezigheid niet gevonden');
       setIsActieBezig(true);
       try {
-        const item = afwezigheden.find((a) => a.id === id);
-        if (!item) throw new Error('Afwezigheid niet gevonden');
-
-        await afwezighedenService.zetTeRugActief(id, formData);
-
-        if (item.documentID) {
-          await documentService.updateDocumentMetadata(item.documentID, 'Actief', formData.definitieveEinddatum);
-        }
-
-        await auditService.logActie({
-          afwezigheidId: id,
-          actie: 'Terug actief',
-          persoonNaam: item.persoon.displayName,
-          oudeWaarde: { status: item.status },
-          nieuweWaarde: { status: 'Actief', einddatum: formData.definitieveEinddatum },
-          opmerking: formData.opmerking,
-        });
-
-        mailService.stuurNotificatie({
-          afwezigheid: item,
-          mailType: 'terug_actief',
-          settings,
-          extra: { nieuweEinddatum: formData.definitieveEinddatum, opmerking: formData.opmerking },
-        }).catch((err) => console.warn('[Mail] Verzending mislukt (niet-blokkerend):', err));
-
+        await absenceController.zetTeRugActief(id, formData, item, settings);
         await laadData();
       } finally {
         setIsActieBezig(false);
@@ -158,7 +115,7 @@ export function useAfwezigheden(): IAfwezighedenState & IAfwezighedenActions {
     async (doc: IZiektebriefDocument, begindatum: Date, einddatum: Date): Promise<void> => {
       setIsActieBezig(true);
       try {
-        await afwezighedenService.maakAfwezigheidVanDocument(doc, begindatum, einddatum);
+        await absenceController.maakAfwezigheidAan(doc, begindatum, einddatum);
         await laadData();
       } finally {
         setIsActieBezig(false);

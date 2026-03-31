@@ -1,0 +1,89 @@
+// ============================================================
+// PendingDocumentenSection.module.scss
+// ============================================================
+
+.container {
+  background: #fff8e1;
+  border: 1px solid #f0c030;
+  border-radius: 4px;
+  padding: 12px 16px;
+}
+
+.waarschuwingIcoon {
+  color: #c0880c;
+  font-size: 16px;
+}
+
+.koptekst {
+  font-weight: 600;
+  color: #7a5700;
+}
+
+.toggleKnop {
+  color: #7a5700;
+}
+
+// Table layout
+.kolomHoofden {
+  background: #f7e79a;
+  padding: 6px 8px;
+  border-radius: 2px 2px 0 0;
+  border-bottom: 1px solid #e0c040;
+}
+
+.kolomHoofd {
+  font-weight: 600;
+  color: #7a5700;
+}
+
+.rij {
+  padding: 8px;
+  border-bottom: 1px solid #e8e0b0;
+}
+
+.rijPaar {
+  background: #fffdf0;
+}
+
+.rijOnpaar {
+  background: #fef9d0;
+}
+
+// Flexible cell widths
+.cel {
+  padding: 0 4px;
+}
+
+.celGroot {
+  flex: 3;
+  min-width: 0;
+}
+
+.celMiddel {
+  flex: 2;
+  min-width: 0;
+}
+
+.documentLink {
+  color: #0078d4;
+  text-decoration: none;
+  font-size: 13px;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.pdfIcoon {
+  margin-right: 4px;
+  font-size: 12px;
+}
+
+.persoonNaam {
+  font-weight: 600;
+}
+
+.geenPersoon {
+  color: #a4262c;
+  font-style: italic;
+}

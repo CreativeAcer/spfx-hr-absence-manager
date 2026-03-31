@@ -9,18 +9,15 @@ import {
   Icon, TooltipHost,
 } from '@fluentui/react';
 import { IZiektebriefDocument } from '../../models';
+import { formatDatum } from '../../utils/dateUtils';
 import { AanmaakAfwezigheidModal } from '../modals/AanmaakAfwezigheidModal';
+import styles from './PendingDocumentenSection.module.scss';
 
 interface IPendingDocumentenSectionProps {
   documenten: IZiektebriefDocument[];
   isBezig: boolean;
   onAanmaken: (doc: IZiektebriefDocument, begindatum: Date, einddatum: Date) => Promise<void>;
   onNegeren: (id: number) => Promise<void>;
-}
-
-function formatDatum(d: Date | undefined): string {
-  if (!d) return '—';
-  return d.toLocaleDateString('nl-BE', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
 export const PendingDocumentenSection: React.FC<IPendingDocumentenSectionProps> = ({
@@ -35,37 +32,35 @@ export const PendingDocumentenSection: React.FC<IPendingDocumentenSectionProps> 
 
   const handleAanmaken = async (begindatum: Date, einddatum: Date): Promise<void> => {
     if (!geselecteerdDoc) return;
-    setBezigeRij(geselecteerdDoc.id);
+    const docId = geselecteerdDoc.id;
     setGeselecteerdDoc(undefined);
-    await onAanmaken(geselecteerdDoc, begindatum, einddatum);
-    setBezigeRij(undefined);
+    setBezigeRij(docId);
+    try {
+      await onAanmaken(geselecteerdDoc, begindatum, einddatum);
+    } finally {
+      setBezigeRij(undefined);
+    }
   };
 
   const handleNegeren = async (): Promise<void> => {
     if (negeerDocId === undefined) return;
-    setBezigeRij(negeerDocId);
+    const docId = negeerDocId;
     setNegeerDocId(undefined);
-    await onNegeren(negeerDocId);
-    setBezigeRij(undefined);
+    setBezigeRij(docId);
+    try {
+      await onNegeren(docId);
+    } finally {
+      setBezigeRij(undefined);
+    }
   };
 
   return (
-    <Stack
-      styles={{
-        root: {
-          background: '#fff8e1',
-          border: '1px solid #f0c030',
-          borderRadius: 4,
-          padding: '12px 16px',
-        },
-      }}
-      tokens={{ childrenGap: 8 }}
-    >
+    <Stack className={styles.container} tokens={{ childrenGap: 8 }}>
       {/* Header */}
       <Stack horizontal verticalAlign="center" horizontalAlign="space-between">
         <Stack horizontal verticalAlign="center" tokens={{ childrenGap: 8 }}>
-          <Icon iconName="Warning" styles={{ root: { color: '#c0880c', fontSize: 16 } }} />
-          <Text variant="mediumPlus" styles={{ root: { fontWeight: 600, color: '#7a5700' } }}>
+          <Icon iconName="Warning" className={styles.waarschuwingIcoon} />
+          <Text variant="mediumPlus" className={styles.koptekst}>
             Nieuwe ziektebriefjes zonder dossier ({documenten.length})
           </Text>
         </Stack>
@@ -73,82 +68,67 @@ export const PendingDocumentenSection: React.FC<IPendingDocumentenSectionProps> 
           iconProps={{ iconName: ingeklapt ? 'ChevronDown' : 'ChevronUp' }}
           text={ingeklapt ? 'Tonen' : 'Verbergen'}
           onClick={() => setIngeklapt(!ingeklapt)}
-          styles={{ root: { color: '#7a5700' } }}
+          className={styles.toggleKnop}
         />
       </Stack>
 
       {!ingeklapt && (
-        <Stack tokens={{ childrenGap: 0 }}>
-          {/* Kolomhoofden */}
-          <Stack
-            horizontal
-            styles={{
-              root: {
-                background: '#f7e79a',
-                padding: '6px 8px',
-                borderRadius: '2px 2px 0 0',
-                borderBottom: '1px solid #e0c040',
-              },
-            }}
-          >
-            <Text variant="small" styles={{ root: { fontWeight: 600, flex: 3, color: '#7a5700' } }}>Bestand</Text>
-            <Text variant="small" styles={{ root: { fontWeight: 600, flex: 2, color: '#7a5700' } }}>Medewerker</Text>
-            <Text variant="small" styles={{ root: { fontWeight: 600, flex: 2, color: '#7a5700' } }}>Periode</Text>
-            <Text variant="small" styles={{ root: { fontWeight: 600, flex: 2, color: '#7a5700' } }}>Acties</Text>
+        <Stack tokens={{ childrenGap: 0 }} role="table" aria-label="Ongekoppelde ziektebriefjes">
+          {/* Column headers */}
+          <Stack horizontal className={styles.kolomHoofden} role="row">
+            <Text variant="small" className={`${styles.cel} ${styles.celGroot} ${styles.kolomHoofd}`} role="columnheader">Bestand</Text>
+            <Text variant="small" className={`${styles.cel} ${styles.celMiddel} ${styles.kolomHoofd}`} role="columnheader">Medewerker</Text>
+            <Text variant="small" className={`${styles.cel} ${styles.celMiddel} ${styles.kolomHoofd}`} role="columnheader">Periode</Text>
+            <Text variant="small" className={`${styles.cel} ${styles.celMiddel} ${styles.kolomHoofd}`} role="columnheader">Acties</Text>
           </Stack>
 
           {documenten.map((doc, idx) => {
             const heeftPersoon = !!doc.persoon;
-            const rowBezig = bezigeRij === doc.id || (isBezig && bezigeRij === doc.id);
+            const rowBezig = bezigeRij === doc.id;
 
             return (
               <Stack
                 key={doc.id}
                 horizontal
                 verticalAlign="center"
-                styles={{
-                  root: {
-                    padding: '8px',
-                    background: idx % 2 === 0 ? '#fffdf0' : '#fef9d0',
-                    borderBottom: '1px solid #e8e0b0',
-                  },
-                }}
+                className={`${styles.rij} ${idx % 2 === 0 ? styles.rijPaar : styles.rijOnpaar}`}
+                role="row"
               >
                 {/* Bestandsnaam */}
-                <Stack styles={{ root: { flex: 3 } }}>
+                <Stack className={`${styles.cel} ${styles.celGroot}`} role="cell">
                   <a
                     href={doc.serverRelativeUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    style={{ color: '#0078d4', textDecoration: 'none', fontSize: 13 }}
+                    className={styles.documentLink}
                   >
-                    <Icon iconName="PDF" styles={{ root: { marginRight: 4, fontSize: 12 } }} />
+                    <Icon iconName="PDF" className={styles.pdfIcoon} />
                     {doc.fileName}
                   </a>
                 </Stack>
 
                 {/* Medewerker */}
-                <Stack styles={{ root: { flex: 2 } }}>
+                <Stack className={`${styles.cel} ${styles.celMiddel}`} role="cell">
                   {heeftPersoon ? (
-                    <Text variant="small" styles={{ root: { fontWeight: 600 } }}>
+                    <Text variant="small" className={styles.persoonNaam}>
                       {doc.persoon!.displayName}
                     </Text>
                   ) : (
-                    <Text variant="small" styles={{ root: { color: '#a4262c', fontStyle: 'italic' } }}>
+                    <Text variant="small" className={styles.geenPersoon}>
                       Niet ingevuld
                     </Text>
                   )}
                 </Stack>
 
                 {/* Periode */}
-                <Stack styles={{ root: { flex: 2 } }}>
+                <Stack className={`${styles.cel} ${styles.celMiddel}`} role="cell">
                   <Text variant="small">
-                    {formatDatum(doc.aanvangsDatum)} – {formatDatum(doc.eindDatum)}
+                    {doc.aanvangsDatum ? formatDatum(doc.aanvangsDatum) : '—'} &ndash; {doc.eindDatum ? formatDatum(doc.eindDatum) : '—'}
                   </Text>
                 </Stack>
 
                 {/* Acties */}
-                <Stack horizontal styles={{ root: { flex: 2 } }} tokens={{ childrenGap: 6 }}>
+                <Stack horizontal className={`${styles.cel} ${styles.celMiddel}`} tokens={{ childrenGap: 6 }} role="cell">
                   {rowBezig ? (
                     <Spinner size={SpinnerSize.small} />
                   ) : (

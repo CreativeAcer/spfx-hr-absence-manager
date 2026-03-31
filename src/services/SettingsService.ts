@@ -3,6 +3,7 @@
 // ============================================================
 import { getSP, LIST_NAMES } from '../config/pnpjsConfig';
 import { IHrSettings } from '../models';
+import { SP_QUERY_LIMITS } from '../constants';
 
 const DEFAULT_SETTINGS: IHrSettings = {
   ccEmailAdressen: [],
@@ -23,7 +24,7 @@ export class SettingsService {
         .getByTitle(LIST_NAMES.HR_SETTINGS)
         .items.select('Title', 'Waarde', 'IsActief')
         .filter(`IsActief eq 1`)
-        .top(50)();
+        .top(SP_QUERY_LIMITS.SETTINGS)();
 
       const map: Record<string, string> = {};
       items.forEach((item: Record<string, string>) => {
@@ -43,11 +44,12 @@ export class SettingsService {
           : DEFAULT_SETTINGS.maxVerlengingen,
       };
     } catch {
-      // Lijst bestaat nog niet (setup niet uitgevoerd) — standaardwaarden gebruiken
-      this.cachedSettings = { ...DEFAULT_SETTINGS };
+      // Lijst bestaat nog niet (setup niet uitgevoerd) — standaardwaarden teruggeven
+      // Niet cachen zodat het opnieuw geprobeerd wordt na setup.
+      return { ...DEFAULT_SETTINGS };
     }
 
-    return this.cachedSettings!;
+    return this.cachedSettings as IHrSettings;
   }
 
   public clearCache(): void {

@@ -10,6 +10,8 @@ import {
   IKpiData,
   IZiektebriefDocument,
 } from '../models';
+import { SP_QUERY_LIMITS, DREMPEL_DAGEN } from '../constants';
+import { berekenDagenVerschil, MS_PER_DAY } from '../utils/dateUtils';
 
 interface IAfwezigheidSpItem {
   Id: number;
@@ -30,14 +32,10 @@ interface IAfwezigheidSpItem {
   HRNota?: string;
 }
 
-const WAARSCHUWING_DAGEN = 7;
-
-function mapItem(item: IAfwezigheidSpItem): IAfwezigheid {
+function mapItem(item: IAfwezigheidSpItem, waarschuwingsDagen: number): IAfwezigheid {
   const einddatum = new Date(item.Einddatum);
   const vandaag = new Date();
-  const dagenTotEinde = Math.ceil(
-    (einddatum.getTime() - vandaag.getTime()) / (1000 * 60 * 60 * 24)
-  );
+  const dagenTotEinde = berekenDagenVerschil(vandaag, einddatum);
 
   return {
     id: item.Id,
@@ -63,12 +61,12 @@ function mapItem(item: IAfwezigheidSpItem): IAfwezigheid {
     aangepastOp: item.AangepastOp ? new Date(item.AangepastOp) : undefined,
     hrNota: item.HRNota,
     dagenTotEinde,
-    isVerlopend: dagenTotEinde <= WAARSCHUWING_DAGEN && dagenTotEinde > 0,
+    isVerlopend: dagenTotEinde <= waarschuwingsDagen && dagenTotEinde > 0,
   };
 }
 
 export class AfwezighedenService {
-  public async getActieveAfwezigheden(): Promise<IAfwezigheid[]> {
+  public async getActieveAfwezigheden(waarschuwingsDagen = DREMPEL_DAGEN.WAARSCHUWING): Promise<IAfwezigheid[]> {
     const sp = getSP();
     const items = await sp.web.lists
       .getByTitle(LIST_NAMES.AFWEZIGHEDEN)
@@ -84,9 +82,9 @@ export class AfwezighedenService {
       .expand('Persoon', 'AangepastDoor')
       .filter(`Status ne 'Gearchiveerd'`)
       .orderBy('Begindatum', false)
-      .top(500)();
+      .getAll(SP_QUERY_LIMITS.AFWEZIGHEDEN);
 
-    return (items as IAfwezigheidSpItem[]).map(mapItem);
+    return (items as IAfwezigheidSpItem[]).map((item) => mapItem(item, waarschuwingsDagen));
   }
 
   public async verlengAfwezigheid(
@@ -139,7 +137,7 @@ export class AfwezighedenService {
       AantalVerlengingen: 0,
     });
 
-    const afwezigheidId = (result as Record<string, unknown>).Id as number;
+    const afwezigheidId = result.Id;
 
     await sp.web.lists.getByTitle(LIBRARY_NAMES.ZIEKTEBRIEFJES).items.getById(doc.id).update({
       AfwezigheidID: afwezigheidId,
@@ -149,9 +147,9 @@ export class AfwezighedenService {
     return afwezigheidId;
   }
 
-  public berekenKpis(afwezigheden: IAfwezigheid[]): IKpiData {
+  public berekenKpis(afwezigheden: IAfwezigheid[], waarschuwingsDagen = DREMPEL_DAGEN.WAARSCHUWING): IKpiData {
     const vandaag = new Date();
-    const volgendeWeek = new Date(vandaag.getTime() + 7 * 24 * 60 * 60 * 1000);
+    const volgendeWeek = new Date(vandaag.getTime() + waarschuwingsDagen * MS_PER_DAY);
     const actief = afwezigheden.filter((a) => a.status === 'Ziekteverlof' || a.status === 'Verlengd');
 
     const verlopendDezeWeek = actief.filter(
@@ -164,7 +162,7 @@ export class AfwezighedenService {
     }).length;
 
     const duuren = actief
-      .map((a) => Math.ceil((a.einddatum.getTime() - a.begindatum.getTime()) / (1000 * 60 * 60 * 24)))
+      .map((a) => berekenDagenVerschil(a.begindatum, a.einddatum))
       .filter((d) => d > 0);
 
     return {

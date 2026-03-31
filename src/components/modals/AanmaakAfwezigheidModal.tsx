@@ -8,6 +8,8 @@ import {
   DatePicker, DayOfWeek, MessageBar, MessageBarType, Spinner, SpinnerSize,
 } from '@fluentui/react';
 import { IZiektebriefDocument } from '../../models';
+import { NL_DATEPICKER_STRINGS_COMPACT } from '../../constants';
+import { formatDatum } from '../../utils/dateUtils';
 
 interface IAanmaakAfwezigheidModalProps {
   document: IZiektebriefDocument;
@@ -16,14 +18,6 @@ interface IAanmaakAfwezigheidModalProps {
   onBevestig: (begindatum: Date, einddatum: Date) => Promise<void>;
   onAnnuleer: () => void;
 }
-
-const NL_STRINGS = {
-  months: ['januari','februari','maart','april','mei','juni','juli','augustus','september','oktober','november','december'],
-  shortMonths: ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'],
-  days: ['zondag','maandag','dinsdag','woensdag','donderdag','vrijdag','zaterdag'],
-  shortDays: ['zo','ma','di','wo','do','vr','za'],
-  goToToday: 'Naar vandaag',
-};
 
 export const AanmaakAfwezigheidModal: React.FC<IAanmaakAfwezigheidModalProps> = ({
   document, isOpen, isBezig, onBevestig, onAnnuleer,
@@ -34,7 +28,7 @@ export const AanmaakAfwezigheidModal: React.FC<IAanmaakAfwezigheidModalProps> = 
 
   const handleBevestig = async (): Promise<void> => {
     if (!begindatum) { setFout('Begindatum is verplicht.'); return; }
-    if (!einddatum) { setFout('Einddatum is verplicht.'); return; }
+    if (!einddatum)  { setFout('Einddatum is verplicht.'); return; }
     if (einddatum < begindatum) { setFout('Einddatum moet na de begindatum liggen.'); return; }
     setFout(undefined);
     await onBevestig(begindatum, einddatum);
@@ -62,8 +56,8 @@ export const AanmaakAfwezigheidModal: React.FC<IAanmaakAfwezigheidModalProps> = 
           value={begindatum}
           onSelectDate={(d) => setBegindatum(d ?? undefined)}
           firstDayOfWeek={DayOfWeek.Monday}
-          strings={NL_STRINGS}
-          formatDate={(d) => d ? d.toLocaleDateString('nl-BE') : ''}
+          strings={NL_DATEPICKER_STRINGS_COMPACT}
+          formatDate={(d) => d ? formatDatum(d) : ''}
           isRequired
         />
 
@@ -72,8 +66,8 @@ export const AanmaakAfwezigheidModal: React.FC<IAanmaakAfwezigheidModalProps> = 
           value={einddatum}
           onSelectDate={(d) => setEinddatum(d ?? undefined)}
           firstDayOfWeek={DayOfWeek.Monday}
-          strings={NL_STRINGS}
-          formatDate={(d) => d ? d.toLocaleDateString('nl-BE') : ''}
+          strings={NL_DATEPICKER_STRINGS_COMPACT}
+          formatDate={(d) => d ? formatDatum(d) : ''}
           isRequired
           minDate={begindatum}
         />

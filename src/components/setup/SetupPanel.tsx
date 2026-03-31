@@ -5,11 +5,12 @@ import * as React from 'react';
 import { useState, useEffect, useCallback } from 'react';
 import {
   Panel, PanelType, Stack, Text,
-  PrimaryButton, DefaultButton, ActionButton,
+  PrimaryButton, DefaultButton,
   Spinner, SpinnerSize, MessageBar, MessageBarType,
-  Separator, ProgressIndicator, Icon, TooltipHost,
+  Separator, ProgressIndicator, Icon,
 } from '@fluentui/react';
-import { ISetupItem, SetupItemStatus, setupService } from '../../services/SetupService';
+import { ISetupItem, setupService } from '../../services/SetupService';
+import { SetupStatusItem } from './SetupStatusItem';
 import styles from './SetupPanel.module.scss';
 
 interface ISetupPanelProps {
@@ -17,92 +18,16 @@ interface ISetupPanelProps {
   onSluit: () => void;
 }
 
-interface IStatusVisueel { icoon: string; kleur: string; label: string; }
-
-function getStatusVisueel(status: SetupItemStatus): IStatusVisueel {
-  switch (status) {
-    case 'bestaat':   return { icoon: 'CheckMark',      kleur: '#107c10', label: 'Bestaat al'  };
-    case 'ontbreekt': return { icoon: 'Warning',         kleur: '#ca5010', label: 'Ontbreekt'   };
-    case 'bezig':     return { icoon: 'Sync',            kleur: '#0078d4', label: 'Bezig...'    };
-    case 'klaar':     return { icoon: 'CheckMark',       kleur: '#107c10', label: 'Aangemaakt'  };
-    case 'fout':      return { icoon: 'ErrorBadge',      kleur: '#a4262c', label: 'Fout'        };
-    default:          return { icoon: 'CircleHalfFull',  kleur: '#605e5c', label: 'Onbekend'    };
-  }
+interface ILogRegel {
+  id: string;
+  tekst: string;
 }
-
-// Map status naar scss klasse — 'onbekend' valt terug op lege string
-function getStatusKlasse(status: SetupItemStatus): string {
-  const map: Partial<Record<SetupItemStatus, string>> = {
-    bestaat:   styles.status_bestaat,
-    ontbreekt: styles.status_ontbreekt,
-    bezig:     styles.status_bezig,
-    klaar:     styles.status_klaar,
-    fout:      styles.status_fout,
-  };
-  return map[status] ?? '';
-}
-
-interface ISetupStatusItemProps {
-  item: ISetupItem;
-  onEnkelAanmaken: (id: string) => void;
-  isGlobaalBezig: boolean;
-}
-
-const SetupStatusItem: React.FC<ISetupStatusItemProps> = ({ item, onEnkelAanmaken, isGlobaalBezig }) => {
-  const visueel = getStatusVisueel(item.status);
-  const isBezig = item.status === 'bezig';
-  const kanAanmaken = item.status === 'ontbreekt' || item.status === 'fout';
-
-  return (
-    <Stack className={`${styles.statusItem} ${getStatusKlasse(item.status)}`} tokens={{ childrenGap: 6 }}>
-      <Stack horizontal verticalAlign="center" tokens={{ childrenGap: 10 }}>
-        <Stack className={styles.statusIcoonWrapper}>
-          {isBezig
-            ? <Spinner size={SpinnerSize.small} />
-            : <Icon iconName={visueel.icoon} styles={{ root: { color: visueel.kleur, fontSize: 18 } }} />
-          }
-        </Stack>
-        <Stack grow tokens={{ childrenGap: 2 }}>
-          <Stack horizontal tokens={{ childrenGap: 8 }} verticalAlign="center">
-            <Text className={styles.itemLabel}>{item.label}</Text>
-            <span
-              className={styles.statusBadge}
-              style={{ backgroundColor: visueel.kleur + '20', color: visueel.kleur, border: `1px solid ${visueel.kleur}40` }}
-            >
-              {visueel.label}
-            </span>
-            {item.aantalKolommenAangemaakt !== undefined && item.aantalKolommenAangemaakt > 0 && (
-              <span className={styles.aantalBadge}>+{item.aantalKolommenAangemaakt} aangemaakt</span>
-            )}
-          </Stack>
-          <Text className={styles.itemBeschrijving}>{item.beschrijving}</Text>
-        </Stack>
-        {kanAanmaken && (
-          <TooltipHost content={`"${item.label}" aanmaken`}>
-            <ActionButton
-              iconProps={{ iconName: 'Add' }}
-              text="Aanmaken"
-              onClick={() => onEnkelAanmaken(item.id)}
-              disabled={isGlobaalBezig}
-              className={styles.enkelKnop}
-            />
-          </TooltipHost>
-        )}
-      </Stack>
-      {item.status === 'fout' && item.foutmelding && (
-        <Stack styles={{ root: { paddingLeft: 28 } }}>
-          <Text className={styles.foutText}>⚠️ {item.foutmelding}</Text>
-        </Stack>
-      )}
-    </Stack>
-  );
-};
 
 export const SetupPanel: React.FC<ISetupPanelProps> = ({ isOpen, onSluit }) => {
   const [items, setItems] = useState<ISetupItem[]>([]);
   const [isScanBezig, setIsScanBezig] = useState(false);
   const [isProvisionBezig, setIsProvisionBezig] = useState(false);
-  const [voortgangLog, setVoortgangLog] = useState<string[]>([]);
+  const [voortgangLog, setVoortgangLog] = useState<ILogRegel[]>([]);
   const [scanFout, setScanFout] = useState<string | undefined>(undefined);
   const [allesKlaar, setAllesKlaar] = useState(false);
 
@@ -110,8 +35,8 @@ export const SetupPanel: React.FC<ISetupPanelProps> = ({ isOpen, onSluit }) => {
     setItems((prev) => prev.map((item) => item.id === id ? { ...item, ...updates } : item));
   }, []);
 
-  const logVoortgang = useCallback((bericht: string) => {
-    setVoortgangLog((prev) => [...prev, bericht]);
+  const logVoortgang = useCallback((tekst: string) => {
+    setVoortgangLog((prev) => [...prev, { id: `${Date.now()}-${Math.random()}`, tekst }]);
   }, []);
 
   const voerScanUit = useCallback(async (): Promise<void> => {
@@ -133,7 +58,7 @@ export const SetupPanel: React.FC<ISetupPanelProps> = ({ isOpen, onSluit }) => {
     if (isOpen) { voerScanUit().catch(console.error); }
   }, [isOpen, voerScanUit]);
 
-  const handleProvisionAlles = async (): Promise<void> => {
+  const handleProvisionAlles = useCallback(async (): Promise<void> => {
     setIsProvisionBezig(true);
     setVoortgangLog([]);
     setAllesKlaar(false);
@@ -143,9 +68,9 @@ export const SetupPanel: React.FC<ISetupPanelProps> = ({ isOpen, onSluit }) => {
     );
     setIsProvisionBezig(false);
     setAllesKlaar(true);
-  };
+  }, [logVoortgang, updateItem]);
 
-  const handleEnkelAanmaken = async (id: string): Promise<void> => {
+  const handleEnkelAanmaken = useCallback(async (id: string): Promise<void> => {
     setIsProvisionBezig(true);
     setVoortgangLog([]);
     updateItem(id, { status: 'bezig', foutmelding: undefined });
@@ -158,7 +83,7 @@ export const SetupPanel: React.FC<ISetupPanelProps> = ({ isOpen, onSluit }) => {
     } finally {
       setIsProvisionBezig(false);
     }
-  };
+  }, [logVoortgang, updateItem]);
 
   const aantalOntbrekend = items.filter((i) => i.status === 'ontbreekt' || i.status === 'fout').length;
   const aantalKlaar      = items.filter((i) => i.status === 'bestaat'   || i.status === 'klaar').length;
@@ -169,7 +94,7 @@ export const SetupPanel: React.FC<ISetupPanelProps> = ({ isOpen, onSluit }) => {
       isOpen={isOpen}
       onDismiss={onSluit}
       type={PanelType.medium}
-      headerText="⚙️ SharePoint Structuren Setup"
+      headerText="SharePoint Structuren Setup"
       closeButtonAriaLabel="Sluiten"
       onRenderFooterContent={() => (
         <Stack horizontal tokens={{ childrenGap: 8 }} styles={{ root: { padding: '16px 0' } }}>
@@ -217,7 +142,7 @@ export const SetupPanel: React.FC<ISetupPanelProps> = ({ isOpen, onSluit }) => {
               />
               <Text styles={{ root: { fontWeight: 600 } }}>
                 {isAllesAanwezig
-                  ? '✅ Alle structuren zijn aanwezig.'
+                  ? 'Alle structuren zijn aanwezig.'
                   : `${aantalOntbrekend} van ${items.length} structuren ontbreken nog.`}
               </Text>
             </Stack>
@@ -253,8 +178,8 @@ export const SetupPanel: React.FC<ISetupPanelProps> = ({ isOpen, onSluit }) => {
           <>
             <Separator><Text styles={{ root: { color: '#605e5c', fontSize: 12 } }}>VOORTGANG LOG</Text></Separator>
             <Stack className={styles.logContainer} tokens={{ childrenGap: 3 }}>
-              {voortgangLog.map((regel, index) => (
-                <Text key={index} className={styles.logRegel}>{regel}</Text>
+              {voortgangLog.map((regel) => (
+                <Text key={regel.id} className={styles.logRegel}>{regel.tekst}</Text>
               ))}
               {isProvisionBezig && (
                 <Stack horizontal tokens={{ childrenGap: 6 }} verticalAlign="center">

@@ -2,12 +2,14 @@
 // components/table/AfwezighedenTable.tsx
 // ============================================================
 import * as React from 'react';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   DetailsList, IColumn, DetailsListLayoutMode, SelectionMode,
   Stack, Text, ActionButton, TooltipHost, Icon,
 } from '@fluentui/react';
 import { IAfwezigheid } from '../../models';
+import { DREMPEL_DAGEN } from '../../constants';
+import { formatDatum } from '../../utils/dateUtils';
 import { StatusBadge } from './StatusBadge';
 import { DocumentBadge } from './DocumentBadge';
 import { AuditLogPanel } from '../shared/AuditLogPanel';
@@ -21,27 +23,24 @@ interface IAfwezighedenTableProps {
   maxVerlengingen: number;
 }
 
-function formatDatum(datum: Date): string {
-  return datum.toLocaleDateString('nl-BE', { day: '2-digit', month: '2-digit', year: 'numeric' });
-}
-
-function getDagenLabel(dagen: number): React.ReactElement {
-  if (dagen < 0)   return <Text className={styles.verlopenText}>Verlopen ({Math.abs(dagen)} dgn geleden)</Text>;
-  if (dagen <= 3)  return <Text className={styles.kritiekText}>⚠️ Nog {dagen} dag{dagen === 1 ? '' : 'en'}</Text>;
-  if (dagen <= 7)  return <Text className={styles.waarschuwingText}>🟡 Nog {dagen} dagen</Text>;
+const DagenLabel: React.FC<{ dagen: number }> = ({ dagen }) => {
+  if (dagen < 0)                        return <Text className={styles.verlopenText}>Verlopen ({Math.abs(dagen)} dgn geleden)</Text>;
+  if (dagen <= DREMPEL_DAGEN.KRITIEK)   return <Text className={styles.kritiekText}>Nog {dagen} dag{dagen === 1 ? '' : 'en'}</Text>;
+  if (dagen <= DREMPEL_DAGEN.WAARSCHUWING) return <Text className={styles.waarschuwingText}>Nog {dagen} dagen</Text>;
   return <Text className={styles.okText}>{dagen} dagen</Text>;
-}
+};
+
+const kanVerlengd    = (a: IAfwezigheid): boolean => a.status !== 'Actief' && a.status !== 'Gearchiveerd';
+const kanTeRugActief = (a: IAfwezigheid): boolean => a.status === 'Ziekteverlof' || a.status === 'Verlengd';
 
 export const AfwezighedenTable: React.FC<IAfwezighedenTableProps> = ({
   afwezigheden, onVerleng, onTeRugActief, isActieBezig, maxVerlengingen,
 }) => {
   const [auditId, setAuditId] = useState<number | undefined>(undefined);
 
-  const kanVerlengd    = (a: IAfwezigheid): boolean => a.status !== 'Actief' && a.status !== 'Gearchiveerd';
-  const kanTeRugActief = (a: IAfwezigheid): boolean => a.status === 'Ziekteverlof' || a.status === 'Verlengd';
-  const isMaxBereikt   = (a: IAfwezigheid): boolean => a.aantalVerlengingen >= maxVerlengingen;
+  const isMaxBereikt = (a: IAfwezigheid): boolean => a.aantalVerlengingen >= maxVerlengingen;
 
-  const columns: IColumn[] = [
+  const columns = useMemo<IColumn[]>(() => [
     {
       key: 'persoon', name: 'Medewerker', fieldName: 'persoon',
       minWidth: 160, maxWidth: 220, isResizable: true,
@@ -75,8 +74,8 @@ export const AfwezighedenTable: React.FC<IAfwezighedenTableProps> = ({
       key: 'restTijd', name: 'Resterende tijd', fieldName: 'dagenTotEinde',
       minWidth: 120, maxWidth: 150, isResizable: true,
       onRender: (item: IAfwezigheid) => {
-        if (item.status === 'Actief') return <Text className={styles.teRugActiefText}>✅ Terug op het werk</Text>;
-        return getDagenLabel(item.dagenTotEinde ?? 0);
+        if (item.status === 'Actief') return <Text className={styles.teRugActiefText}>Terug op het werk</Text>;
+        return <DagenLabel dagen={item.dagenTotEinde ?? 0} />;
       },
     },
     {
@@ -96,9 +95,7 @@ export const AfwezighedenTable: React.FC<IAfwezighedenTableProps> = ({
     {
       key: 'document', name: 'Document', fieldName: 'documentLink',
       minWidth: 80, maxWidth: 110, isResizable: true,
-      onRender: (item: IAfwezigheid) => (
-        <DocumentBadge documentLink={item.documentLink} afwezigheidId={item.id} />
-      ),
+      onRender: (item: IAfwezigheid) => <DocumentBadge afwezigheidId={item.id} />,
     },
     {
       key: 'aangepast', name: 'Laatste wijziging', fieldName: 'aangepastOp',
@@ -141,12 +138,14 @@ export const AfwezighedenTable: React.FC<IAfwezighedenTableProps> = ({
               onClick={() => setAuditId(item.id)}
               disabled={isActieBezig}
               className={styles.historiekKnop}
+              ariaLabel="Wijzigingshistoriek"
             />
           </TooltipHost>
         </Stack>
       ),
     },
-  ];
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  ], [isActieBezig, maxVerlengingen, onVerleng, onTeRugActief]);
 
   if (afwezigheden.length === 0) {
     return (
@@ -168,6 +167,7 @@ export const AfwezighedenTable: React.FC<IAfwezighedenTableProps> = ({
         isHeaderVisible
         className={styles.tabel}
         getKey={(item: IAfwezigheid) => `afwezigheid-${item.id}`}
+        ariaLabelForGrid="Afwezigheidsoverzicht"
         onRenderRow={(props, defaultRender) => {
           if (!props || !defaultRender) return null;
           return defaultRender({

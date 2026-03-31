@@ -8,18 +8,18 @@
     "skipFeatureDeployment": true,
     "isDomainIsolated": false,
     "developer": {
-      "name": "",
+      "name": "HR Ziektebeheer",
       "websiteUrl": "",
       "privacyUrl": "",
       "termsOfUseUrl": "",
-      "mpnId": "Undefined-1.20.0"
+      "mpnId": ""
     },
     "metadata": {
       "shortDescription": {
-        "default": "hr-ziektebeheer description"
+        "default": "HR-tool voor het beheren van afwezigheden en ziektedossiers"
       },
       "longDescription": {
-        "default": "hr-ziektebeheer description"
+        "default": "Beheert medewerker-afwezigheden, ziektebriefjes en medische documenten. Inclusief audit-log, email-notificaties en KPI-dashboard."
       },
       "screenshotPaths": [],
       "videoUrl": "",

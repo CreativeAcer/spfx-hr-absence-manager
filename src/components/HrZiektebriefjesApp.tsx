@@ -8,7 +8,7 @@ import {
   Spinner, SpinnerSize, SearchBox, Dropdown,
   IDropdownOption, CommandBar, ICommandBarItemProps,
 } from '@fluentui/react';
-import { IAfwezigheid } from '../models';
+import { IAfwezigheid, AfwezigheidStatus } from '../models';
 import { useAfwezigheden } from '../hooks/useAfwezigheden';
 import { setupService } from '../services/SetupService';
 import { KpiHeader } from './dashboard/KpiHeader';
@@ -17,9 +17,11 @@ import { VerlengModal } from './modals/VerlengModal';
 import { TeRugActiefModal } from './modals/TeRugActiefModal';
 import { SetupPanel } from './setup/SetupPanel';
 import { PendingDocumentenSection } from './pending/PendingDocumentenSection';
+import { ErrorBoundary } from './shared/ErrorBoundary';
 import styles from './HrZiektebriefjesApp.module.scss';
 
 type ModalType = 'verleng' | 'terug_actief' | undefined;
+type StatusFilterKey = 'ziek' | 'niet_actief' | 'alle' | 'verlopend' | AfwezigheidStatus;
 
 export const HrZiektebriefjesApp: React.FC = () => {
   const {
@@ -29,7 +31,7 @@ export const HrZiektebriefjesApp: React.FC = () => {
   } = useAfwezigheden();
 
   const [zoekterm, setZoekterm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('ziek');
+  const [statusFilter, setStatusFilter] = useState<StatusFilterKey>('ziek');
   const [geselecteerde, setGeselecteerde] = useState<IAfwezigheid | undefined>(undefined);
   const [actieveModal, setActieveModal] = useState<ModalType>(undefined);
   const [isSetupOpen, setIsSetupOpen] = useState(false);
@@ -54,17 +56,17 @@ export const HrZiektebriefjesApp: React.FC = () => {
     return matchZoek && matchStatus;
   }), [afwezigheden, zoekterm, statusFilter]);
 
-  const statusOpties: IDropdownOption[] = [
-    { key: 'ziek',         text: '🏥 Enkel ziekteverlof' },
-    { key: 'niet_actief',  text: '📋 Alles behalve Actief' },
-    { key: 'alle',         text: '🔍 Alle statussen' },
-    { key: 'Ziekteverlof', text: '🤒 Ziekteverlof' },
-    { key: 'Verlengd',     text: '🟡 Verlengd' },
-    { key: 'Actief',       text: '✅ Actief (terug op het werk)' },
-    { key: 'verlopend',    text: '🔴 Verloopt binnenkort' },
-  ];
+  const statusOpties = useMemo<IDropdownOption[]>(() => [
+    { key: 'ziek',         text: 'Enkel ziekteverlof' },
+    { key: 'niet_actief',  text: 'Alles behalve Actief' },
+    { key: 'alle',         text: 'Alle statussen' },
+    { key: 'Ziekteverlof', text: 'Ziekteverlof' },
+    { key: 'Verlengd',     text: 'Verlengd' },
+    { key: 'Actief',       text: 'Actief (terug op het werk)' },
+    { key: 'verlopend',    text: 'Verloopt binnenkort' },
+  ], []);
 
-  const commandBarItems: ICommandBarItemProps[] = [
+  const commandBarItems = useMemo<ICommandBarItemProps[]>(() => [
     {
       key: 'herlaad',
       text: 'Vernieuwen',
@@ -78,7 +80,7 @@ export const HrZiektebriefjesApp: React.FC = () => {
       iconProps: { iconName: 'BuildDefinition' },
       onClick: () => setIsSetupOpen(true),
     }] : []),
-  ];
+  ], [isLoading, isSiteOwner, herlaad]);
 
   const sluitModal = (): void => {
     setActieveModal(undefined);
@@ -94,79 +96,85 @@ export const HrZiektebriefjesApp: React.FC = () => {
   }
 
   return (
-    <Stack className={styles.appContainer} tokens={{ childrenGap: 16 }}>
-      <Stack horizontal horizontalAlign="space-between" verticalAlign="center" className={styles.appHeader}>
-        <Stack>
-          <Text variant="xxLarge" className={styles.appTitle}>🏥 HR Ziektebriefjes</Text>
-          <Text variant="medium" className={styles.appSubtitle}>Beheer van afwezigheden en ziektedossiers</Text>
+    <ErrorBoundary>
+      <Stack className={styles.appContainer} tokens={{ childrenGap: 16 }}>
+        <Stack horizontal horizontalAlign="space-between" verticalAlign="center" className={styles.appHeader}>
+          <Stack>
+            <Text variant="xxLarge" className={styles.appTitle}>HR Ziektebriefjes</Text>
+            <Text variant="medium" className={styles.appSubtitle}>Beheer van afwezigheden en ziektedossiers</Text>
+          </Stack>
+          <CommandBar items={commandBarItems} styles={{ root: { padding: 0 } }} />
         </Stack>
-        <CommandBar items={commandBarItems} styles={{ root: { padding: 0 } }} />
-      </Stack>
 
-      {fout && (
-        <MessageBar messageBarType={MessageBarType.error} isMultiline={false} dismissButtonAriaLabel="Sluiten">
-          {fout}
-        </MessageBar>
-      )}
+        {fout && (
+          <MessageBar messageBarType={MessageBarType.error} isMultiline={false} dismissButtonAriaLabel="Sluiten">
+            {fout}
+          </MessageBar>
+        )}
 
-      {kpis && <KpiHeader kpis={kpis} />}
+        {kpis && <KpiHeader kpis={kpis} />}
 
-      <PendingDocumentenSection
-        documenten={pendingDocumenten}
-        isBezig={isActieBezig}
-        onAanmaken={maakAfwezigheidAan}
-        onNegeren={negeerDocument}
-      />
-
-      <Stack horizontal tokens={{ childrenGap: 12 }} className={styles.filterBar} wrap>
-        <SearchBox
-          placeholder="Zoek op naam, afdeling..."
-          value={zoekterm}
-          onChange={(_, val) => setZoekterm(val ?? '')}
-          onClear={() => setZoekterm('')}
-          className={styles.searchBox}
-        />
-        <Dropdown
-          options={statusOpties}
-          selectedKey={statusFilter}
-          onChange={(_, opt) => setStatusFilter(opt?.key as string ?? 'alle')}
-          className={styles.statusDropdown}
-        />
-        <Text variant="small" className={styles.resultTelling}>
-          {gefiltered.length} van {afwezigheden.length} afwezigheden
-        </Text>
-      </Stack>
-
-      <AfwezighedenTable
-        afwezigheden={gefiltered}
-        onVerleng={(a) => { setGeselecteerde(a); setActieveModal('verleng'); }}
-        onTeRugActief={(a) => { setGeselecteerde(a); setActieveModal('terug_actief'); }}
-        isActieBezig={isActieBezig}
-        maxVerlengingen={settings?.maxVerlengingen ?? 3}
-      />
-
-      {actieveModal === 'verleng' && geselecteerde && (
-        <VerlengModal
-          afwezigheid={geselecteerde}
-          isOpen={true}
+        <PendingDocumentenSection
+          documenten={pendingDocumenten}
           isBezig={isActieBezig}
-          maxVerlengingen={settings?.maxVerlengingen ?? 3}
-          onBevestig={async (formData) => { await verleng(geselecteerde.id, formData); sluitModal(); }}
-          onAnnuleer={sluitModal}
+          onAanmaken={maakAfwezigheidAan}
+          onNegeren={negeerDocument}
         />
-      )}
 
-      {actieveModal === 'terug_actief' && geselecteerde && (
-        <TeRugActiefModal
-          afwezigheid={geselecteerde}
-          isOpen={true}
-          isBezig={isActieBezig}
-          onBevestig={async (formData) => { await zetTeRugActief(geselecteerde.id, formData); sluitModal(); }}
-          onAnnuleer={sluitModal}
-        />
-      )}
+        <Stack horizontal tokens={{ childrenGap: 12 }} className={styles.filterBar} wrap>
+          <SearchBox
+            placeholder="Zoek op naam, afdeling..."
+            value={zoekterm}
+            onChange={(_, val) => setZoekterm(val ?? '')}
+            onClear={() => setZoekterm('')}
+            className={styles.searchBox}
+          />
+          <Dropdown
+            options={statusOpties}
+            selectedKey={statusFilter}
+            onChange={(_, opt) => setStatusFilter((opt?.key as StatusFilterKey) ?? 'alle')}
+            className={styles.statusDropdown}
+          />
+          <Text variant="small" className={styles.resultTelling}>
+            {gefiltered.length} van {afwezigheden.length} afwezigheden
+          </Text>
+        </Stack>
 
-      <SetupPanel isOpen={isSetupOpen} onSluit={() => setIsSetupOpen(false)} />
-    </Stack>
+        <ErrorBoundary>
+          <AfwezighedenTable
+            afwezigheden={gefiltered}
+            onVerleng={(a) => { setGeselecteerde(a); setActieveModal('verleng'); }}
+            onTeRugActief={(a) => { setGeselecteerde(a); setActieveModal('terug_actief'); }}
+            isActieBezig={isActieBezig}
+            maxVerlengingen={settings?.maxVerlengingen ?? 3}
+          />
+        </ErrorBoundary>
+
+        {actieveModal === 'verleng' && geselecteerde && (
+          <VerlengModal
+            key={`verleng-${geselecteerde.id}`}
+            afwezigheid={geselecteerde}
+            isOpen={true}
+            isBezig={isActieBezig}
+            maxVerlengingen={settings?.maxVerlengingen ?? 3}
+            onBevestig={async (formData) => { await verleng(geselecteerde.id, formData); sluitModal(); }}
+            onAnnuleer={sluitModal}
+          />
+        )}
+
+        {actieveModal === 'terug_actief' && geselecteerde && (
+          <TeRugActiefModal
+            key={`terug-${geselecteerde.id}`}
+            afwezigheid={geselecteerde}
+            isOpen={true}
+            isBezig={isActieBezig}
+            onBevestig={async (formData) => { await zetTeRugActief(geselecteerde.id, formData); sluitModal(); }}
+            onAnnuleer={sluitModal}
+          />
+        )}
+
+        <SetupPanel isOpen={isSetupOpen} onSluit={() => setIsSetupOpen(false)} />
+      </Stack>
+    </ErrorBoundary>
   );
 };

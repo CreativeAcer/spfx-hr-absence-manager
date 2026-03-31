@@ -24,7 +24,6 @@ export interface IAfwezigheid {
   hrNota?: string;
   dagenTotEinde?: number;
   isVerlopend?: boolean;
-  document?: IZiektebriefDocument;
 }
 
 export interface IPersoon {
@@ -74,7 +73,6 @@ export interface IVerlengFormData {
   hrNota?: string;
 }
 
-// LET OP: was ITeругActiefFormData (met Cyrillische г) — gecorrigeerd
 export interface ITeRugActiefFormData {
   definitieveEinddatum: Date;
   opmerking?: string;

@@ -3,6 +3,7 @@
 // ============================================================
 import { getSP, LIST_NAMES } from '../config/pnpjsConfig';
 import { IAuditEntry, AuditActie, IAfwezigheid } from '../models';
+import { SP_QUERY_LIMITS } from '../constants';
 
 export class AuditService {
   public async logActie(params: {
@@ -37,7 +38,7 @@ export class AuditService {
       .expand('Author')
       .filter(`AfwezigheidID eq ${afwezigheidId}`)
       .orderBy('Tijdstip', false)
-      .top(50)();
+      .top(SP_QUERY_LIMITS.AUDIT_LOG)();
 
     return items.map((item: Record<string, unknown>) => ({
       id: item.Id as number,

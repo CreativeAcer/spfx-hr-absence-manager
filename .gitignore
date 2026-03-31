@@ -27,6 +27,10 @@ coverage
 bin
 obj
 
+# Local development config — contains tenant-specific URL
+# Copy config/serve.json.template to config/serve.json and fill in your tenant details
+config/serve.json
+
 # Resx Generated Code
 *.resx.ts
 

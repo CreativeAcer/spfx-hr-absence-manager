@@ -5,6 +5,8 @@
 // ============================================================
 import { getGraph } from '../config/pnpjsConfig';
 import { IAfwezigheid, IHrSettings } from '../models';
+import { formatDatum } from '../utils/dateUtils';
+import { berekenDagenVerschil } from '../utils/dateUtils';
 
 export type MailType = 'verlenging' | 'terug_actief';
 
@@ -18,17 +20,22 @@ interface IMailOpties {
   };
 }
 
-function formatDatum(datum: Date): string {
-  return datum.toLocaleDateString('nl-BE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 function bouwMail(opties: IMailOpties): { onderwerp: string; inhoud: string } {
   const { afwezigheid, mailType, extra } = opties;
-  const naam = afwezigheid.persoon.displayName;
-  const afdeling = afwezigheid.afdeling ?? 'N/A';
-  const begin = formatDatum(afwezigheid.begindatum);
+  const naam      = escapeHtml(afwezigheid.persoon.displayName);
+  const afdeling  = escapeHtml(afwezigheid.afdeling ?? 'N/A');
+  const begin     = formatDatum(afwezigheid.begindatum);
   const nieuwEinde = extra?.nieuweEinddatum ? formatDatum(extra.nieuweEinddatum) : 'N/A';
-  const opmerking = extra?.opmerking ?? '';
+  const opmerking = escapeHtml(extra?.opmerking ?? '');
 
   if (mailType === 'verlenging') {
     return {
@@ -50,7 +57,7 @@ function bouwMail(opties: IMailOpties): { onderwerp: string; inhoud: string } {
   }
 
   const duur = extra?.nieuweEinddatum
-    ? Math.ceil((extra.nieuweEinddatum.getTime() - afwezigheid.begindatum.getTime()) / (1000 * 60 * 60 * 24))
+    ? berekenDagenVerschil(afwezigheid.begindatum, extra.nieuweEinddatum)
     : 0;
 
   return {
